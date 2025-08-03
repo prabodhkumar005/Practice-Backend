@@ -1,44 +1,83 @@
 import { User } from "../models/User.model.js";
 import bcrypt from "bcrypt"
-export const Register=async(req,res)=>{
+import jwt from "jsonwebtoken"
+export const Register = async (req, res) => {
     try {
-        const {firstName,lastName,email,password}=req.body;
-        if(!firstName,!lastName,!email,!password){
+        const { firstName, lastName, email, password } = req.body;
+        if (!firstName, !lastName, !email, !password) {
             return res.status(400).json({
-                success:false,
-                message:"all fields are required"
+                success: false,
+                message: "all fields are required"
             })
         }
-        if(password.length<6){
+        if (password.length < 6) {
             return res.status(400).json({
-                success:false,
-                message:"password must be atleast 6 character"
+                success: false,
+                message: "password must be atleast 6 character"
             })
         }
-        const existingEmail=await User.findOne({email:email})
-        if(existingEmail){
+        const existingEmail = await User.findOne({ email: email })
+        if (existingEmail) {
             return res.status(400).json({
-                success:false,
-                message:"email already exists"
+                success: false,
+                message: "email already exists"
             })
         }
-        const hashPassword=await bcrypt.hash(password,10);
+        const hashPassword = await bcrypt.hash(password, 10);
         await User.create({
             firstName,
             lastName,
             email,
-            password:hashPassword
+            password: hashPassword
         })
         return res.status(201).json({
-            success:true,
-            message:"account created successfully"
+            success: true,
+            message: "account created successfully"
         })
 
     } catch (error) {
         console.log(error);
         return res.status(500).json({
-            success:false,
-            message:"failed to register"
+            success: false,
+            message: "failed to register"
+        })
+    }
+}
+
+export const Login = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        if (!email && !password) {
+            res.status(400).json({
+                success: false,
+                message: "all fields are required"
+            })
+        }
+        let user = await User.findOne({ email });
+        if (!user) {
+            return res.status(400).json({
+                success: false,
+                message: "incorrect email or password"
+            })
+        }
+        const isValidPassword = await bcrypt.compare(password, user.password);
+        if (!isValidPassword) {
+            return res.status(400).json({
+                success: false,
+                message: "invalid credentials"
+            })
+        }
+        const token = await jwt.sign({ userId: user._id }, "123", { expiresIn: '1d' });
+        return res.status(200).cookie("token", token, { maxAge: 1 * 24 * 60 * 60 * 1000, httpsOnly: true, sameSite: "strict" }).json({
+            success: true,
+            message: `Welcome back ${user.firstName}`,
+            user
+        })
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to Login",
         })
     }
 }
