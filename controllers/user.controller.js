@@ -67,7 +67,7 @@ export const Login = async (req, res) => {
                 message: "invalid credentials"
             })
         }
-        const token = await jwt.sign({ userId: user._id }, "123", { expiresIn: '1d' });
+        const token = await jwt.sign({ userId: user._id }, process.env.SECRET_KEY, { expiresIn: '1d' });
         return res.status(200).cookie("token", token, { maxAge: 1 * 24 * 60 * 60 * 1000, httpsOnly: true, sameSite: "strict" }).json({
             success: true,
             message: `Welcome back ${user.firstName}`,
@@ -89,5 +89,27 @@ export const Logout=async(_,res)=>{
         })
     } catch (error) {
         console.log(error);
+    }
+}
+
+export const getAllUser=async(req,res)=>{
+    try {
+        const users=await User.find().select('-password');
+        console.log(users);
+    if(users){
+        return res.status(200).json({
+            success:true,
+            message:"user list fetched successfully",
+            total:users.length,
+            users
+
+        })
+    }
+    } catch (error) {
+        console.log(error)
+        return res.status(500).json({
+            success:false,
+            message:"failed to fetch users"
+        })
     }
 }
