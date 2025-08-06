@@ -1,6 +1,8 @@
 import { User } from "../models/User.model.js";
 import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
+import getDataUri from "../utils/dataUri.js";
+import cloudinary from "../utils/cloudinary.js";
 export const Register = async (req, res) => {
     try {
         const { firstName, lastName, email, password } = req.body;
@@ -110,6 +112,50 @@ export const getAllUser=async(req,res)=>{
         return res.status(500).json({
             success:false,
             message:"failed to fetch users"
+        })
+    }
+}
+
+
+export const updateProfile = async(req, res) => {
+    try {
+        console.log(req.id);
+        const userId= req.id
+        console.log(userId)
+        const {firstName, lastName, occupation,linkedin} = req.body;
+        const file = req.file;
+
+        const fileUri = getDataUri(file)
+        let cloudResponse = await cloudinary.uploader.upload(fileUri)
+
+        const user = await User.findById(userId).select("-password")
+        
+        if(!user){
+            return res.status(404).json({
+                message:"User not found",
+                success:false
+            })
+        }
+
+        // updating data
+        if(firstName) user.firstName = firstName
+        if(lastName) user.lastName = lastName
+        if(occupation) user.occupation = occupation
+        if(linkedin) user.linkedin = linkedin
+        if(file) user.photoUrl = cloudResponse.secure_url
+
+        await user.save()
+        return res.status(200).json({
+            message:"profile updated successfully",
+            success:true,
+            user
+        })
+        
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to update profile"
         })
     }
 }
